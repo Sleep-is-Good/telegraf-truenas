@@ -1,0 +1,34 @@
+#!/bin/bash
+
+echo "telegraf ALL=NOPASSWD:/usr/sbin/smartctl" >> /etc/sudoers
+echo "telegraf ALL = NOPASSWD: /mnt/zfs_libs/zpool_influxdb" >> /etc/sudoers
+echo "Defaults:telegraf !requiretty, !syslog" >> /etc/sudoers
+
+export PATH="/mnt/zfs_libs:$PATH"
+
+set -e
+if [ "${1:0:1}" = '-' ]; then
+set -- telegraf "$@"
+fi
+
+if [ $EUID -ne 0 ]; then
+    exec "$@"
+else
+    # Allow telegraf to send ICMP packets and bind to privliged ports
+    setcap cap_net_raw,cap_net_bind_service+ep /usr/bin/telegraf || echo "Failed to set additional capabilities on /usr/bin/telegraf"
+
+    # ensure HOME is set to the telegraf user's home dir
+    export HOME=$(getent passwd telegraf | cut -d : -f 6)
+
+    # combine the telegraf user's own groups, so memberships baked into
+    # /etc/group are kept (as su-exec's initgroups did), with any supplied via
+    # 'docker run --group-add ...', then drop 'root' and any duplicates
+    # see https://github.com/influxdata/influxdata-docker/issues/724
+    groups="$(printf '%s %s' "$(id -Gn telegraf)" "$(id -Gn || true)" \
+        | tr ' ' '\n' | grep -vx root | sort -u | paste -sd, -)"
+    exec setpriv --reuid telegraf --regid telegraf --groups "$groups" "$@"
+fi
+
+ldconfig
+
+echo "Custom Entrypoint Startup Complete"

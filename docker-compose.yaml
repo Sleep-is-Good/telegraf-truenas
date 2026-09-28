@@ -1,0 +1,24 @@
+services:
+  telegraf-truenas:
+    container_name: telegraf
+    image: telegraf-truenas:latest
+    restart: unless-stopped
+    environment:
+      - HOST_ETC=/hostfs/etc
+      - HOST_PROC=/hostfs/proc
+      - HOST_SYS=/hostfs/sys
+      - HOST_VAR=/hostfs/var
+      - HOST_RUN=/hostfs/run
+      - HOST_DEV=/hostfs/dev
+      - HOST_MOUNT_PREFIX=/hostfs
+      - HOST_MNT=/hostfs/mnt
+      - LD_LIBRARY_PATH=/zfs_libs
+    volumes:
+      - /lib/x86_64-linux-gnu:/zfs_libs:ro
+      - /usr/lib/zfs-linux:/zpool_libs:ro
+      - /etc:/hostfs/etc:ro
+      - /proc:/hostfs/proc:ro
+      - /sys:/hostfs/sys:ro
+      - /var:/hostfs/var:ro
+      - /run:/hostfs/run:ro
+      - /dev:/hostfs/dev:ro
